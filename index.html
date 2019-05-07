@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>DataBase</title>
     <link rel="stylesheet" href="styles/style.css">
-    <script src="../three.js/build/three.min.js"></script>
+    <script src="../three.js-master/build/three.min.js"></script>
     <script src="src/app.js"></script>
     <script src="../libs/OrbitControls.js"></script>
     <script src="../libs/Pabhoz/Utilities.js"></script>
@@ -22,7 +22,7 @@
         var items;
 
         //Vea, vamos a leer ese archivo
-        fetch('http://localhost/CG/zeldaShopServer/Item.php')
+        fetch('http://localhost/usbcali/CG-2019-I/threeDShopServer/Item.php')
             .then(function (response) {
                 //Lo que usted lea, transformelo a JSON
                 return response.json();

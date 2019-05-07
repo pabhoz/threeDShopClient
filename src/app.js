@@ -97,28 +97,29 @@ function initScene() {
  * Function to add all objects and stuff to scene
  */
 function initObjects(){
-   for (let i = 0; i < items.length; i++) {
-    
-        let properties = [];
 
-        for (let j = 0; j < items[i].properties.length; j++) {
-            properties[items[i].properties[j]["name"]] =items[i].properties[j];
+    items.forEach(element => {
+        if(element["properties"] == null){ return false; } //prevenir errores si no existen propiedades
+        let properties = {}; //objeto vacío de propiedades
+        for (let i = 0; i < element["properties"].length; i++) { //ciclo que recorre las propiedades
+            const property = element["properties"][i]; //constante para un llamado más fácil
+            properties[property["name"]] = property; //Asigno al ojeto un atributo con el nombre de la propiedad
         }
-        console.log(properties)
-        let [w,h,d] = [
+        
+        let [w,h,d,color] = [ //Definición de múltiples variables para crear el objeto
             properties["width"]["value"],
             properties["height"]["value"],
-            properties["depth"]["value"]
+            properties["depth"]["value"],
+            parseInt(properties["color"]["value"]),
         ];
 
-        var e = new THREE.Mesh(
-            new THREE.CubeGeometry(w,h,d),
-            new THREE.MeshPhongMaterial( {color:0x6a6a6a})
+        scene.add( //Adición del objeto a la escena
+            new THREE.Mesh(
+                new THREE.CubeGeometry(w,h,d),
+                new THREE.MeshPhongMaterial( {color:color, wireframe: true})
+            )
         );
-
-        scene.add(e);
-
-    }
+    });
 }
 
 /**
