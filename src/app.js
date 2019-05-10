@@ -15,6 +15,12 @@ cameraControl = null;
 scene = null;
 renderer = null
 
+var mouseRayCaster = new THREE.Raycaster();
+var mouse = new THREE.Vector2();
+
+var hoveredList = [];
+var hoverList = [];
+
 
 /**
  * Function to start program running a
@@ -23,9 +29,20 @@ renderer = null
 let webGLStart = () => {
     initScene();
     window.onresize = onWindowResize;
+    window.onmousemove = onMouseMove;
     lastTime = Date.now();
     animateScene();
 };
+
+function onMouseMove(event) {
+
+    // calculate mouse position in normalized device coordinates
+    // (-1 to +1) for both components
+
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+
+}
 
 /**
  * Here we can setup all our scene noobsters
@@ -50,33 +67,33 @@ function initScene() {
 
     //positioning cameras
     cameras.default = new THREE.PerspectiveCamera(45, canvas.container.clientWidth / canvas.container.clientHeight, 0.1, 10000);
-    cameras.default.position.set(1600,1600,-1600);
+    cameras.default.position.set(400, 400, -400);
     cameras.default.lookAt(new THREE.Vector3(0, 0, 0));
 
     //CAMERAS
     var tracking = new THREE.PerspectiveCamera(45, canvas.container.clientWidth / canvas.container.clientHeight, 1, 10000);
-	tracking.position.set(1600,1600,-1600);
-	tracking.lookAt(new THREE.Vector3(0,0,0));
+    tracking.position.set(1600, 1600, -1600);
+    tracking.lookAt(new THREE.Vector3(0, 0, 0));
 
-	var fixed = new THREE.PerspectiveCamera(45, canvas.container.clientWidth / canvas.container.clientHeight, 1, 10000);
-	fixed.position.set(-600,300,-600);
-	fixed.lookAt(new THREE.Vector3(0,0,0));
+    var fixed = new THREE.PerspectiveCamera(45, canvas.container.clientWidth / canvas.container.clientHeight, 1, 10000);
+    fixed.position.set(-600, 300, -600);
+    fixed.lookAt(new THREE.Vector3(0, 0, 0));
 
-	var tpersona = new THREE.PerspectiveCamera(45, canvas.container.clientWidth / canvas.container.clientHeight, 1, 10000);
-	tpersona.position.set(1600,1600,-1600);
-	tpersona.lookAt(new THREE.Vector3(0,0,0));
+    var tpersona = new THREE.PerspectiveCamera(45, canvas.container.clientWidth / canvas.container.clientHeight, 1, 10000);
+    tpersona.position.set(1600, 1600, -1600);
+    tpersona.lookAt(new THREE.Vector3(0, 0, 0));
 
-	var observer = new THREE.PerspectiveCamera(45, canvas.container.clientWidth / canvas.container.clientHeight, 1, 10000);
-	observer.position.set(1600,1600,-1600);
-	observer.lookAt(new THREE.Vector3(0,0,0));
+    var observer = new THREE.PerspectiveCamera(45, canvas.container.clientWidth / canvas.container.clientHeight, 1, 10000);
+    observer.position.set(1600, 1600, -1600);
+    observer.lookAt(new THREE.Vector3(0, 0, 0));
 
-	cameras.tracking = tracking;
-	cameras.fixed = fixed;
-	cameras.tpersona = tpersona;
+    cameras.tracking = tracking;
+    cameras.fixed = fixed;
+    cameras.tpersona = tpersona;
     cameras.observer = observer;
     //Setting up current default camera as current camera
     cameras.current = cameras.default;
-    
+
     //Camera control Plugin
     cameraControl = new THREE.OrbitControls(cameras.current, renderer.domElement);
 
@@ -84,11 +101,18 @@ function initScene() {
     scene.add(lAmbiente);
 
     //FPS monitor
-	stats = new Stats();
-	stats.domElement.style.position = 'absolute';
-	stats.domElement.style.top = stats.domElement.style.left = '10px';
-	stats.domElement.style.zIndex = '100';
-	document.body.appendChild(stats.domElement);
+    stats = new Stats();
+    stats.domElement.style.position = 'absolute';
+    stats.domElement.style.top = stats.domElement.style.left = '10px';
+    stats.domElement.style.zIndex = '100';
+    document.body.appendChild(stats.domElement);
+
+    let plane = new THREE.Mesh(
+        new THREE.PlaneGeometry(400, 400, 40, 40),
+        new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true })
+    )
+    plane.rotation.x = Math.PI / 2;
+    scene.add(plane);
 
     initObjects();
 }
@@ -96,30 +120,79 @@ function initScene() {
 /**
  * Function to add all objects and stuff to scene
  */
-function initObjects(){
+function initObjects() {
 
     items.forEach(element => {
-        if(element["properties"] == null){ return false; } //prevenir errores si no existen propiedades
+        if (element["properties"] == null) { return false; } //prevenir errores si no existen propiedades
         let properties = {}; //objeto vacío de propiedades
-        for (let i = 0; i < element["properties"].length; i++) { //ciclo que recorre las propiedades
-            const property = element["properties"][i]; //constante para un llamado más fácil
-            properties[property["name"]] = property; //Asigno al ojeto un atributo con el nombre de la propiedad
-        }
-        
-        let [w,h,d,color] = [ //Definición de múltiples variables para crear el objeto
-            properties["width"]["value"],
-            properties["height"]["value"],
-            properties["depth"]["value"],
-            parseInt(properties["color"]["value"]),
-        ];
+        properties = getProperties(element["properties"]);
 
-        scene.add( //Adición del objeto a la escena
-            new THREE.Mesh(
-                new THREE.CubeGeometry(w,h,d),
-                new THREE.MeshPhongMaterial( {color:color, wireframe: true})
-            )
-        );
+        switch (properties["type"]["value"]) {
+            case "cube":
+                createCube(element, properties);
+                break;
+            case "sphere":
+                createSphere(element, properties);
+                break;
+        }
     });
+}
+
+function createCube(element, properties) {
+    let [w, h, d, color] = [ //Definición de múltiples variables para crear el objeto
+        getProperty(properties, "width") || 20,
+        getProperty(properties, "height") || 20,
+        getProperty(properties, "depth") || 20,
+        parseInt(getProperty(properties, "color"), ) || 0xffffff,
+    ];
+    let obj = new THREE.Mesh(
+        new THREE.CubeGeometry(w, h, d),
+        new THREE.MeshPhongMaterial({ color: color })
+    );
+    obj.myId = element.id;
+    setPosition(obj, getProperty(properties, "posX"), getProperty(properties, "posY"), getProperty(properties, "posZ"));
+    hoverList.push(obj);
+    console.log(obj)
+    scene.add(obj);
+}
+
+function createSphere(element, properties) {
+    let [radius, ws, hs, color] = [ //Definición de múltiples variables para crear el objeto
+        getProperty(properties, "radius") || 10,
+        getProperty(properties, "ws") || 10,
+        getProperty(properties, "hs") || 10,
+        parseInt(getProperty(properties, "color"), ) || 0xffffff,
+    ];
+    let obj = new THREE.Mesh(
+        new THREE.SphereGeometry(radius, ws, hs),
+        new THREE.MeshPhongMaterial({ color: color })
+    );
+    setPosition(obj, getProperty(properties, "posX"), getProperty(properties, "posY"), getProperty(properties, "posZ"));
+    hoverList.push(obj);
+    scene.add(obj);
+}
+
+function getProperty(properties, property) {
+    let keys = Object.keys(properties);
+    let resultado = keys.find((element) => {
+        return element == property;
+    });
+
+    return (resultado != undefined) ? properties[property]["value"] : undefined;
+}
+
+function getProperties(p){
+    let properties = [];
+    for (let i = 0; i < p.length; i++) { //ciclo que recorre las propiedades
+        const property = p[i]; //constante para un llamado más fácil
+        properties[property["name"]] = property; //Asigno al ojeto un atributo con el nombre de la 
+    }
+    return properties;
+}
+
+function setPosition(obj, x, y, z) {
+    var [x, y, z] = [x || 0, y || 0, z || 0];
+    obj.position.set(x, y, z);
 }
 
 /**
@@ -143,6 +216,40 @@ function updateScene() {
     cameraControl.update();
     //Updating FPS monitor
     stats.update();
+
+    ///// RAYCASTER DEL MOUSE
+    // update the picking ray with the camera and mouse position
+    mouseRayCaster.setFromCamera(mouse, cameras.default);
+
+    // calculate objects intersecting the picking ray
+    var intersects = mouseRayCaster.intersectObjects(hoverList);
+
+    for (var i = 0; i < intersects.length; i++) {
+
+        let isHovered = hoveredList.find((obj) => {
+            return obj == intersects[i].object;
+        });
+        if (!isHovered) {
+            hoveredList.push(intersects[i].object);
+            intersects[i].object.material.color.set(0xff0000);
+        }
+    }
+
+    if(intersects.length <= 0){
+        hoveredList.forEach(obj => {
+            var color = "";
+            //console.log(items);
+            for (let i = 0; i  < items.length; i++) {
+                const element = items[i];
+                if(element.id == obj.myId){
+                    let p = getProperties(element.properties);
+                    color = getProperty(p,"color");
+                    obj.material.color.set(parseInt(color));
+                }
+            }
+            
+        });
+    }
 
 }
 
